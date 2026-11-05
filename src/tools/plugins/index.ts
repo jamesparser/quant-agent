@@ -158,6 +158,7 @@ import {
 import { wikipediaSearchPlugin, wikipediaArticlePlugin } from './wikipedia'
 import { webSearchPlugin } from './web-search'
 import { culturalInsightsPlugin } from './cultural-insights'
+import { realCryptoCapPlugins } from './realcryptocap'
 import {
   wikidataSearchPlugin,
   wikidataEntityPlugin,
@@ -198,9 +199,9 @@ export const corePlugins: ToolPlugin<any, any>[] = [
   readDocumentPlugin,
   listDocumentsPlugin,
   getDocumentSummaryPlugin,
+  // RealCryptoCap: market data, decision receipts, strategy library, user's bot
+  ...realCryptoCapPlugins,
   // Research
-  webSearchPlugin,
-  culturalInsightsPlugin,
   wikipediaSearchPlugin,
   wikipediaArticlePlugin,
   wikidataSearchPlugin,
@@ -250,8 +251,7 @@ export const pluginsByCategory = {
     getDocumentSummaryPlugin,
   ],
   research: [
-    webSearchPlugin,
-    culturalInsightsPlugin,
+    ...realCryptoCapPlugins,
     wikipediaSearchPlugin,
     wikipediaArticlePlugin,
     wikidataSearchPlugin,
