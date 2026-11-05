@@ -14,7 +14,10 @@ import { AGENTASIA, MANAGED_GATEWAY_DEFAULT } from '@/config/agentasia'
 export type PlanId = 'free' | 'pro' | 'smallBusiness' | 'enterprise'
 
 export function gatewayBase(): string {
-  return ((import.meta.env.VITE_AGENTASIA_GATEWAY_URL as string) || MANAGED_GATEWAY_DEFAULT).replace(/\/+$/, '')
+  const raw = ((import.meta.env.VITE_AGENTASIA_GATEWAY_URL as string) || MANAGED_GATEWAY_DEFAULT).replace(/\/+$/, '')
+  // A path such as `/api/gw` means the same-origin proxy (api/gw.ts).
+  if (raw.startsWith('/') && typeof window !== 'undefined') return `${window.location.origin}${raw}`
+  return raw
 }
 
 export function isManagedLaneConfigured(): boolean {
@@ -39,8 +42,8 @@ export function isManagedLaneConfigured(): boolean {
  * saved one of these before the switch would otherwise keep sending it and fail
  * with "model does not exist", so they are mapped to Nemotron 3 Super 120B.
  */
-export const HOSTED_MODEL_FALLBACK = 'nvidia/nemotron-3-super-120b-a12b'
-const RETIRED_HOSTED_MODELS = ['nemotron3nano30ba3b', 'nemotron3ultra550ba55b']
+export const HOSTED_MODEL_FALLBACK = 'realcryptocap/quant-agent'
+const RETIRED_HOSTED_MODELS = ['nemotron3nano30ba3b', 'nemotron3ultra550ba55b', 'nemotron3super120ba12b']
 
 export function canonicalHostedModel(model: string): string {
   const flat = (model || '').toLowerCase().replace(/[^a-z0-9]/g, '')

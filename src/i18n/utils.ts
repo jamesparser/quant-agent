@@ -119,6 +119,16 @@ export const useTranslations = <MoreLocales>(
 
     // Fall back to original marked parsing for other markdown
     const html = marked.parseInline(tmpl) as string
+    // marked escapes entities (`&` becomes `&amp;`), and callers render the
+    // result as plain text, so undo that when no markup was produced.
+    if (!html.includes('<')) {
+      return html
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&amp;/g, '&')
+    }
     return html
   }
 

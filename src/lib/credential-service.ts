@@ -2,6 +2,7 @@ import { LLMConfig, Credential, LLMProvider } from '@/types'
 import { notifyError } from '@/features/notifications'
 import { useLLMModelStore, HOSTED_LANE_CREDENTIAL_ID } from '@/stores/llmModelStore'
 import { canonicalHostedModel, gatewayBase, modelForPlan } from '@/lib/llm/managed-lane'
+import { getRciKey } from '@/lib/rcc-session'
 
 /**
  * Providers that don't require API keys (local/browser-based)
@@ -36,6 +37,7 @@ export class CredentialService {
             selectedModels['openai-compatible'] || modelForPlan('free'),
           ),
           baseUrl: `${gatewayBase()}/v1`,
+          ...(getRciKey() ? { apiKey: getRciKey()! } : {}),
         }
       }
       return null

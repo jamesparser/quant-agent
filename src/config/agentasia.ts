@@ -10,7 +10,7 @@
  * `VITE_AGENTASIA_GATEWAY_URL` overrides it per environment; the default keeps
  * the managed lane working even if a deploy forgets to set the variable.
  */
-export const MANAGED_GATEWAY_DEFAULT = 'https://agentasia-gateway.realcryptocap.com'
+export const MANAGED_GATEWAY_DEFAULT = 'https://realcryptocap.com/api/agent'
 
 export const AGENTASIA = {
   slogan: 'Personal trading & research assistant' as const,
@@ -32,15 +32,15 @@ export const AGENTASIA = {
     free: {
       label: 'Free',
       priceUsdMonthly: 0,
-      model: 'nvidia/nemotron-3-super-120b-a12b',
+      model: 'realcryptocap/quant-agent',
       localWebGpuOnly: false,
       futureGpuCloudAccess: true,
       // Token-clamped + text/voice only; see server gateway quota.
       canChooseModel: false,
     },
-    pro: { label: 'Pro', priceUsdMonthly: 20, model: 'nvidia/nemotron-3-super-120b-a12b', canChooseModel: false },
-    smallBusiness: { label: 'Small Business', priceUsdMonthly: 100, model: 'nvidia/nemotron-3-super-120b-a12b', canChooseModel: false },
-    enterprise: { label: 'Enterprise', priceUsdMonthly: 200, model: 'nvidia/nemotron-3-super-120b-a12b', canChooseModel: false },
+    pro: { label: 'Pro', priceUsdMonthly: 20, model: 'realcryptocap/quant-agent', canChooseModel: false },
+    smallBusiness: { label: 'Small Business', priceUsdMonthly: 100, model: 'realcryptocap/quant-agent', canChooseModel: false },
+    enterprise: { label: 'Enterprise', priceUsdMonthly: 200, model: 'realcryptocap/quant-agent', canChooseModel: false },
   } as Record<string, { label: string; priceUsdMonthly: number; model: string; canChooseModel: boolean; localWebGpuOnly?: boolean; futureGpuCloudAccess?: boolean }>,
   // UI exposure policy. Beta is free and fully managed: users do not choose a
   // model provider, an API key, or a voice engine. The gate only tightens once a

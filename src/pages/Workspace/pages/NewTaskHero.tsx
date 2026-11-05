@@ -15,6 +15,7 @@ import type { Agent, InstalledSkill, SessionIntent } from '@/types'
 import { userSettings } from '@/stores/userStore'
 import { PRODUCT } from '@/config/product'
 import { navigateWithTransition } from '@/lib/navigation-transition'
+import { getRciKey, RCC_QUANT_AGENT_URL } from '@/lib/rcc-session'
 
 export interface NewTaskHeroProps {
   /** When true the PromptArea receives autofocus. Default: true. */
@@ -272,7 +273,7 @@ export function NewTaskHero({
         className="flex min-h-0 flex-1 flex-col overflow-y-auto"
       >
         <div className="flex flex-1 flex-col items-center justify-center px-4 py-8 sm:py-16">
-          <DevsIcon size="6xl" className="opacity-50" />
+          <DevsIcon size="6xl" />
 
           <Title
             subtitle={t(AGENTASIA.slogan)}
@@ -281,6 +282,16 @@ export function NewTaskHero({
           >
             {platformName || PRODUCT.displayName}
           </Title>
+
+          {!getRciKey() && (
+            <div className="mb-6 w-full max-w-2xl rounded-xl border border-default-200 bg-default-50 px-4 py-3 text-center text-sm">
+              Quant Agent is included with RealCryptoCap Pro and Ultra.{' '}
+              <a className="font-medium text-primary underline" href={RCC_QUANT_AGENT_URL}>
+                Sign in on RealCryptoCap and open Quant Agent
+              </a>{' '}
+              to run jobs.
+            </div>
+          )}
 
           {/* PromptArea */}
           <div className="w-full max-w-2xl">

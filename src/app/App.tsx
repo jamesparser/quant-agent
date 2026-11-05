@@ -11,6 +11,10 @@ import 'katex/dist/katex.min.css'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { InfoDialog } from '@/components/InfoDialog'
 import { initAuth } from '@/lib/auth'
+import { captureRciKeyFromHash } from '@/lib/rcc-session'
+
+// Opened from realcryptocap.com/quant-agent with #rci=<account key>: keep it, strip it.
+captureRciKeyFromHash()
 
 // Resolves the auth provider before the first render settles. Inert unless
 // VITE_FIREBASE_API_KEY is set - see src/lib/auth/authProvider.ts for why the

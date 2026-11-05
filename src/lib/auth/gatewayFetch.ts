@@ -5,6 +5,8 @@
  */
 import { gatewayBase } from '@/lib/llm/managed-lane'
 
+import { getRciKey } from '@/lib/rcc-session'
+
 import { auth } from './index'
 
 export const gatewayFetch: typeof fetch = async (input, init) => {
@@ -12,7 +14,9 @@ export const gatewayFetch: typeof fetch = async (input, init) => {
     typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
   const base = gatewayBase()
   if (!base || !url.startsWith(base)) return fetch(input, init)
-  const token = await auth.getIdToken().catch(() => null)
+  // Quant Agent: the RealCryptoCap account key is the credential the
+  // realcryptocap.com/api/agent lane checks for Pro or Ultra.
+  const token = getRciKey() || (await auth.getIdToken().catch(() => null))
   const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined))
   if (token) {
     headers.set('authorization', `Bearer ${token}`)

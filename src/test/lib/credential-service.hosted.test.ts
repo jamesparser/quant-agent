@@ -32,7 +32,7 @@ describe('hosted lane with no stored credentials', () => {
     expect(cfg).not.toBeNull()
     expect(cfg!.provider).toBe('openai-compatible')
     expect(cfg!.baseUrl).toBe(`${MANAGED_GATEWAY_DEFAULT}/v1`)
-    expect(cfg!.model).toMatch(/nemotron-3-super-120b/i)
+    expect(cfg!.model).toMatch(/quant-agent/i)
     // no secret on the wire: the gateway holds the Token Factory key
     expect(cfg!.apiKey).toBeFalsy()
     expect(JSON.stringify(cfg)).not.toMatch(/NEBIUS_API_KEY|sk-motherbrain/)
@@ -46,7 +46,7 @@ describe('hosted lane with no stored credentials', () => {
     const st = useLLMModelStore.getState()
     expect(st.getSelectedProvider()?.id).toBe(HOSTED_LANE_CREDENTIAL_ID)
     expect(st.getSelectedProvider()?.provider).toBe('openai-compatible')
-    expect(st.getSelectedModel()).toMatch(/nemotron-3-super-120b/i)
+    expect(st.getSelectedModel()).toMatch(/quant-agent/i)
   })
 
   it('honours a real credential over the synthetic lane', async () => {

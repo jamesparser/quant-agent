@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "bun install",
+  "buildCommand": "bun run build",
+  "outputDirectory": "dist",
+  "functions": {
+    "api/gw.ts": { "maxDuration": 120 }
+  },
+  "routes": [
+    { "src": "/api/gw/(.*)", "dest": "/api/gw?p=$1" },
+    { "handle": "filesystem" }
+  ]
+}

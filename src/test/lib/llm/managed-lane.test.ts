@@ -16,7 +16,7 @@ describe('managed lane', () => {
     expect(isManagedLaneConfigured()).toBe(true)
     expect(chatUrl()).toBe('https://api.agentasia.dev/v1/chat/completions')
     const body = buildBody('free', [{ role: 'user', content: 'hi' }], { maxTokens: 64 })
-    expect(body.model).toContain('nemotron-3-super-120b')
+    expect(body.model).toContain('quant-agent')
     expect(body.max_tokens).toBe(64)
     expect(body.agentic).toBe(true)
     const wire = JSON.stringify(body)
@@ -24,10 +24,10 @@ describe('managed lane', () => {
   })
 
   it('escalates the model by plan and never lets the user pick it', () => {
-    expect(modelForPlan('free')).toMatch(/super-120b/i)
-    expect(modelForPlan('pro')).toMatch(/super-120b/i)
-    expect(modelForPlan('enterprise')).toMatch(/super-120b/i)
-    expect(modelForPlan('nonsense' as 'free')).toMatch(/super-120b/i)
+    expect(modelForPlan('free')).toMatch(/quant-agent/i)
+    expect(modelForPlan('pro')).toMatch(/quant-agent/i)
+    expect(modelForPlan('enterprise')).toMatch(/quant-agent/i)
+    expect(modelForPlan('nonsense' as 'free')).toMatch(/quant-agent/i)
   })
 
   it('repairs the display-name round-trip the gateway cannot resolve', () => {
@@ -35,7 +35,7 @@ describe('managed lane', () => {
     // 30B-A3B" (the picker label re-hyphenated, org prefix dropped) and the gateway
     // answered provider_http_404, so the task failed. The canonical id carries the
     // prefix, so both display forms must map back to it.
-    const canonical = 'nvidia/nemotron-3-super-120b-a12b'
+    const canonical = 'realcryptocap/quant-agent'
     expect(canonicalHostedModel('NVIDIA-Nemotron-3-Nano-30B-A3B')).toBe(canonical)
     expect(canonicalHostedModel('NVIDIA Nemotron 3 Nano 30B A3B')).toBe(canonical)
     expect(canonicalHostedModel('nvidia nemotron 3 nano 30b a3b')).toBe(canonical)
