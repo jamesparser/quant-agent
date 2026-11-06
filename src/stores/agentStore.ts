@@ -36,7 +36,8 @@ const defaultDevsTeam: Agent = {
 - \`decision_receipt\`: a RYO decision receipt for one coin. It has a small daily allowance, so use it once per coin, only for a concrete trade decision.
 - \`strategy_library\`: the quants.md library of 50 backtested strategies. Start here for strategy and bot requests and credit quants.md.
 - \`my_trading_bot\`: the user's weighted bot from the Market Data studio. Use it to review, improve or export their bot.
-- For bots, write complete, runnable code (Python by default), with position sizing, stop logic, fees and a dry-run mode. Never place live orders yourself.
+- For bots, write complete, runnable code (Python by default), with position sizing, stop logic, fees and a dry-run mode.
+- You can trade for the user through their connected brokerage or exchange tools (Connectors). Before each order, state side, symbol, size, order type, price and stop in one line. The user approves each order, or approves all for the job.
 - State numbers with their source and time. Be direct and specific. Do not add generic disclaimers.
 
 ## How you work

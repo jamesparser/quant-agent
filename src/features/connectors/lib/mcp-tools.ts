@@ -13,6 +13,42 @@ import { SecureStorage } from '@/lib/crypto'
 import type { Connector, McpTool } from '../types'
 import { createMcpSession } from './mcp-http'
 import { MCP_PRESETS, resolveMcpUrl } from './mcp-presets'
+import { requestHumanInput } from '@/lib/hitl'
+
+/** Conversations where the user chose "Approve all" for connector actions. */
+const approvedAll = new Set<string>()
+
+/**
+ * Connector actions that change something (place an order, send, write) ask the
+ * user first: Approve, Approve all for this job, or Reject. Read-only tools and
+ * the "Approve all actions" setting (Settings, Features) skip the prompt.
+ */
+async function approveAction(
+  connectorName: string,
+  toolName: string,
+  args: Record<string, unknown>,
+  context?: { conversationId?: string; agentId?: string },
+): Promise<void> {
+  const conv = context?.conversationId
+  if (!conv) throw new Error('This action needs your approval. Run it from a job so you can approve it.')
+  if (approvedAll.has(conv)) return
+  let shown = ''
+  try { shown = JSON.stringify(args ?? {}, null, 2).slice(0, 1500) } catch { shown = '' }
+  const r = await requestHumanInput({
+    conversationId: conv,
+    agentId: context?.agentId || 'devs',
+    type: 'approval',
+    question: `**${connectorName}** wants to run \`${toolName}\`:\n\n\`\`\`json\n${shown}\n\`\`\`\n\nApprove this action?`,
+    quickReplies: [
+      { label: 'Approve', value: 'approve', color: 'success' },
+      { label: 'Approve all for this job', value: 'approve-all', color: 'primary' },
+      { label: 'Reject', value: 'reject', color: 'danger' },
+    ],
+  })
+  if (r.value === 'approve-all') { approvedAll.add(conv); return }
+  if (r.value === 'approve' || r.status === 'auto-resolved') return
+  throw new Error('The user rejected this action. Do not retry it unless they ask.')
+}
 
 const sessions = new Map<string, ReturnType<typeof createMcpSession>>()
 let registered = new Set<string>()
@@ -103,6 +139,9 @@ export async function registerMcpTools(): Promise<void> {
           const live = connectorsMap.get(connector.id) as Connector | undefined
           if (!live || live.status !== 'connected') {
             throw new Error(`The ${connector.name} connection is no longer available.`)
+          }
+          if (tool.annotations?.readOnlyHint !== true) {
+            await approveAction(connector.name, tool.name, args ?? {}, context)
           }
           const session = await sessionFor(live)
           const out = await session.callTool(

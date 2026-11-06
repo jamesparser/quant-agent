@@ -159,10 +159,10 @@ export function FeaturesSection() {
             onChange={(e) => setYoloMode(e.target.checked)}
             size="sm"
           >
-            <p>{t('YOLO Mode')}</p>
+            <p>{t('Approve all actions automatically')}</p>
             <p className="text-xs text-default-500">
               {t(
-                'Skip all human intervention prompts and let agents decide autonomously',
+                'Skip approval prompts, including orders placed through your connected brokerages and exchanges. Leave off to approve each action.',
               )}
             </p>
           </Switch>
