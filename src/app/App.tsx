@@ -16,6 +16,11 @@ import { captureRciKeyFromHash } from '@/lib/rcc-session'
 // Opened from realcryptocap.com/quant-agent with #rci=<account key>: keep it, strip it.
 captureRciKeyFromHash()
 
+// Install the bundled trading skills once the local stores have loaded.
+globalThis.setTimeout?.(() => {
+  void import('@/lib/skills/bundled').then((m) => m.ensureBundledSkills()).catch(() => {})
+}, 4000)
+
 // Resolves the auth provider before the first render settles. Inert unless
 // VITE_FIREBASE_API_KEY is set - see src/lib/auth/authProvider.ts for why the
 // deployment currently has no credentials.
