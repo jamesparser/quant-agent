@@ -78,14 +78,15 @@ export function CustomMcpWizard({
       const inUrl = preset?.auth === 'url-token'
       const discovery = await discoverHttpMcp(
         url.toString(),
-        needsToken && !inUrl
+        (needsToken || token.trim()) && !inUrl
           ? { token: token.trim(), scheme: preset?.scheme }
           : {},
-        { viaRelay: preset?.noBrowser === true },
+        // Every connector goes through the RealCryptoCap relay unless a preset opts out.
+        { viaRelay: preset?.noBrowser !== false },
       )
       // Only the user's own key is secret. It is encrypted with this device's
       // key; the saved URL keeps the `{token}` placeholder, never the key.
-      const secret = needsToken ? await SecureStorage.encryptCredential(token.trim()) : null
+      const secret = needsToken || token.trim() ? await SecureStorage.encryptCredential(token.trim()) : null
       await addConnector({
         category: 'mcp',
         provider: 'custom-mcp',
@@ -147,6 +148,15 @@ export function CustomMcpWizard({
               value={serverUrl}
               onValueChange={setServerUrl}
               type="url"
+            />
+          )}
+          {needsUrl && !needsToken && (
+            <Input
+              label={tm('Key or token (optional)')}
+              type="password"
+              autoComplete="off"
+              value={token}
+              onValueChange={setToken}
             />
           )}
           {needsToken && (

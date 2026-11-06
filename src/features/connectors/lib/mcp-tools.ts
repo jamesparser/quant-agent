@@ -54,7 +54,7 @@ async function sessionFor(connector: Connector) {
   const cfg = connector.mcpConfig!
   const token = await tokenFor(connector)
   const url = resolveMcpUrl(cfg.urlTemplate ?? cfg.serverUrl, token)
-  const viaRelay = MCP_PRESETS.find((p) => p.id === cfg.presetId)?.noBrowser === true
+  const viaRelay = MCP_PRESETS.find((p) => p.id === cfg.presetId)?.noBrowser !== false
   const session = createMcpSession(
     url,
     cfg.urlTemplate ? {} : { token, scheme: cfg.authScheme },

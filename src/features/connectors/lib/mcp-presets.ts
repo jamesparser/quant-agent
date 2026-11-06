@@ -1,11 +1,10 @@
 /**
  * Catalog of MCP servers a user can connect with one click.
  *
- * Every connection is the user's own: they paste their own key or token for
- * their own account, it is encrypted on their device, and the browser talks to
- * the server directly. Quant Agent holds no shared vendor account and runs no
- * relay, so a server that does not allow browser (CORS) requests cannot be
- * reached from here. The wizard reports that plainly instead of failing quietly.
+ * Every connection is the user's own: they paste their own key, token or MCP URL
+ * for their own account, it is encrypted on their device, and each call goes
+ * through the RealCryptoCap relay (realcryptocap.com/api/agent/v1/mcp/relay), so
+ * servers that refuse browser requests work too. The relay never stores keys.
  *
  * URLs are the vendors' published remote MCP endpoints. A vendor can change
  * one without notice, which is why each entry links to the page where the user
@@ -38,6 +37,8 @@ export interface McpPreset {
     | 'Search the Cloudflare documentation. No key needed.'
     | 'Thousands of apps through one connection. Paste your Zapier key.'
     | 'Hundreds of apps through one connection. Paste your Composio MCP URL.'
+    | 'Thousands of hosted MCP servers, including brokerages. Paste your Glama MCP URL.'
+    | 'Any remote MCP server: a brokerage, exchange or your own tools. Paste its URL.'
     | 'Gmail, Drive, Calendar, Tasks and more. Sign in with Google in the Apps tab.'
   auth: McpPresetAuth
   /** Endpoint, or a template containing `{token}`. */
@@ -56,12 +57,6 @@ export interface McpPreset {
 }
 
 export const MCP_PRESETS: McpPreset[] = [
-  {
-    id: 'tavily',
-    name: 'Tavily',
-    description: 'Live web search. Included in every account, nothing to connect.',
-    auth: 'builtin',
-  },
   {
     id: 'google',
     name: 'Google Workspace',
@@ -129,6 +124,21 @@ export const MCP_PRESETS: McpPreset[] = [
       'Hundreds of apps through one connection. Paste your Composio MCP URL.',
     auth: 'custom-url',
     helpUrl: 'https://platform.composio.dev',
+  },
+  {
+    id: 'glama',
+    name: 'Glama',
+    description:
+      'Thousands of hosted MCP servers, including brokerages. Paste your Glama MCP URL.',
+    auth: 'custom-url',
+    helpUrl: 'https://glama.ai/mcp/servers',
+  },
+  {
+    id: 'custom-remote',
+    name: 'Any MCP server',
+    description:
+      'Any remote MCP server: a brokerage, exchange or your own tools. Paste its URL.',
+    auth: 'custom-url',
   },
 ]
 

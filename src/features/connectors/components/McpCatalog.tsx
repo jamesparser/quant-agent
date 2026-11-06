@@ -37,13 +37,6 @@ export function McpCatalog({ onPick, onOpenApps }: McpCatalogProps) {
                   {t('Needs vendor sign-in, not available in the browser yet')}
                 </p>
               )}
-              {preset.noBrowser && (
-                <p className="text-default-500 text-xs">
-                  {t(
-                    'Goes through the Quant Agent relay because this server refuses web pages. Your key passes through it for each call and is not stored there. Needs a signed in account.',
-                  )}
-                </p>
-              )}
               {builtin ? (
                 <span className="text-success self-start text-xs">
                   {t('Included')}
