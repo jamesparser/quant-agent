@@ -9,7 +9,7 @@
 Quant Agent is an agentic harness for crypto traders. You give it a goal, it
 runs the tools, and it returns research you can act on: market briefs, signal
 reads, risk notes, backtests and trading bot drafts for HTX and Hyperliquid.
-It is not a chat window and it does not place trades.
+It is not a chat window. It can also trade for you through your own connected brokerage or exchange, with your approval on each order or for the whole job.
 
 Built for the [emma Hackathon](https://hackathon.emma.ms/) (Builders track).
 
