@@ -145,4 +145,94 @@ export const myBotPlugin: ToolPlugin<Record<string, never>, ToolResult> = create
   handler: async (_args, ctx) => call('bot', {}, ctx.abortSignal),
 })
 
-export const realCryptoCapPlugins = [marketDataPlugin, decisionReceiptPlugin, strategyLibraryPlugin, myBotPlugin]
+const WEIGHT_KEYS = 'trend, momentum, range, volume, volatility, fear_greed, funding_rate, long_short, stablecoin_liquidity, mvrv_ratio, nupl, puell_multiple, electric_cost, halving_cycle, lunar_cycle, max_pain, darth_maul'
+
+type BacktestArgs = {
+  asset?: string
+  period?: string
+  weights?: Record<string, number>
+  entryThreshold?: number
+  exitThreshold?: number
+  leverage?: number
+  feeRatePct?: number
+}
+
+export const backtestPlugin: ToolPlugin<BacktestArgs, ToolResult> = createToolPlugin({
+  metadata: {
+    name: 'backtest_strategy',
+    displayName: 'Backtest',
+    shortDescription: 'Backtest a weighted strategy on RealCryptoCap historical data',
+    icon: 'GraphUp',
+    category: 'research',
+    tags: ['backtest', 'bot', 'strategy', 'weights'],
+    enabledByDefault: true,
+    estimatedDuration: 5000,
+    requiresConfirmation: false,
+  },
+  definition: {
+    type: 'function',
+    function: {
+      name: 'backtest_strategy',
+      description:
+        `Backtest a weighted signal strategy with the RealCryptoCap Market Data backtester engine and its historical candles and signals. Without weights it uses the user's own Market Data bot weights. Pro: BTC up to 1y. Ultra: BTC, ETH, SOL, HYPE, XRP, LINK, XLM up to 10y. Weight keys: ${WEIGHT_KEYS}. Goes long when the composite score crosses entryThreshold and exits below exitThreshold. Returns strategy vs buy-and-hold return, win rate, profit factor, max drawdown, Sharpe, trades and an equity curve.`,
+      parameters: {
+        type: 'object',
+        properties: {
+          asset: { type: 'string', enum: ['BTC', 'ETH', 'SOL', 'HYPE', 'XRP', 'LINK', 'XLM'] },
+          period: { type: 'string', enum: ['30d', '90d', '180d', '1y', '3y', '5y', '10y'] },
+          weights: { type: 'object', description: 'Optional weights by signal key, any positive scale.' },
+          entryThreshold: { type: 'number', description: 'Composite score 0-100 to enter. Default 60.' },
+          exitThreshold: { type: 'number', description: 'Composite score 0-100 to exit. Default 40.' },
+          leverage: { type: 'number', description: '1 to 30. Default 1.' },
+          feeRatePct: { type: 'number', description: 'Fee per side in percent. Default 0.075.' },
+        },
+      },
+    },
+  },
+  handler: async (args, ctx) =>
+    call('backtest', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(args ?? {}) }, ctx.abortSignal),
+})
+
+export const paperAccountPlugin: ToolPlugin<BacktestArgs & { action?: string }, ToolResult> = createToolPlugin({
+  metadata: {
+    name: 'paper_account',
+    displayName: 'Paper Account',
+    shortDescription: 'Follow a signal strategy with $10,000 of virtual money',
+    icon: 'Coins',
+    category: 'research',
+    tags: ['paper', 'virtual', 'bot', 'pnl'],
+    enabledByDefault: true,
+    estimatedDuration: 4000,
+    requiresConfirmation: false,
+  },
+  definition: {
+    type: 'function',
+    function: {
+      name: 'paper_account',
+      description:
+        "Paper trade a weighted signal strategy with $10,000 of virtual money from today. action 'start' (or 'reset') sets the asset, weights and thresholds (defaults to the user's Market Data bot weights). action 'status' returns days running, closed trades, equity, P&L and the equity curve. Use it so a user can watch a strategy trade before going live.",
+      parameters: {
+        type: 'object',
+        properties: {
+          action: { type: 'string', enum: ['start', 'reset', 'status'] },
+          asset: { type: 'string', enum: ['BTC', 'ETH', 'SOL', 'HYPE', 'XRP', 'LINK', 'XLM'] },
+          weights: { type: 'object' },
+          entryThreshold: { type: 'number' },
+          exitThreshold: { type: 'number' },
+          leverage: { type: 'number' },
+        },
+      },
+    },
+  },
+  handler: async (args, ctx) =>
+    call('paper', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(args ?? {}) }, ctx.abortSignal),
+})
+
+export const realCryptoCapPlugins = [
+  marketDataPlugin,
+  decisionReceiptPlugin,
+  strategyLibraryPlugin,
+  myBotPlugin,
+  backtestPlugin,
+  paperAccountPlugin,
+]
