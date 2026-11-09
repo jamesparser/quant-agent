@@ -9,9 +9,10 @@
  * @module lib/near/signers
  */
 import { NearConnector } from '@hot-labs/near-connect'
-import { Account, KeyPair, actions as A, keyToImplicitAddress } from 'near-api-js'
+import { Account, JsonRpcProvider, KeyPair, actions as A, keyToImplicitAddress } from 'near-api-js'
 import { SecureStorage } from '@/lib/crypto'
 import { NETWORKS, type NearNetwork } from './config'
+import { rpc } from './rpc'
 import { nearState, type AgentWalletRecord } from './state'
 import type { NearTx } from './types'
 
@@ -52,7 +53,7 @@ export function connector(network: NearNetwork): NearConnector {
     const walletConnect = walletConnectClient()
     c = new NearConnector({
       network,
-      providers: { [network]: [NETWORKS[network].rpc] },
+      providers: { [network]: [NETWORKS[network].rpc, ...NETWORKS[network].rpcFallback] },
       autoConnect: true,
       ...(walletConnect ? { walletConnect } : {}),
     })
@@ -130,13 +131,56 @@ async function signWithAgent(network: NearNetwork, txs: NearTx[]): Promise<strin
   const rec = nearState().agent[network]
   if (!rec) throw new Error('No agent wallet on this network. Create one in Settings > NEAR.')
   const secret = await SecureStorage.decryptCredential(rec.encrypted, rec.iv, '')
-  const account = new Account(rec.accountId, NETWORKS[network].rpc, secret as any)
+  const cfg = NETWORKS[network]
+  const account = new Account(rec.accountId, new JsonRpcProvider({ url: cfg.rpc }), secret as any)
   const hashes: string[] = []
-  for (const tx of txs) {
-    const r: any = await account.signAndSendTransaction({ receiverId: tx.receiverId, actions: tx.actions.map(toApiAction), throwOnFailure: true } as any)
-    hashes.push(outcomeHash(r))
+  for (let i = 0; i < txs.length; i++) {
+    const tx = txs[i]
+    try {
+      const before = i > 0 ? await accessKeyNonce(network, rec.accountId, rec.publicKey) : null
+      const r: any = await withTimeout(
+        account.signAndSendTransaction({ receiverId: tx.receiverId, actions: tx.actions.map(toApiAction), throwOnFailure: true } as any),
+        90_000,
+        `Transaction ${i + 1} of ${txs.length} timed out`,
+      )
+      hashes.push(outcomeHash(r))
+      // Let the RPC node see the new nonce before signing the next transaction.
+      if (i < txs.length - 1) await waitForNonceAbove(network, rec.accountId, rec.publicKey, before)
+    } catch (e) {
+      const done = hashes.map((h) => `${cfg.explorer}/txns/${h}`)
+      throw new Error(
+        `Transaction ${i + 1} of ${txs.length} (to ${tx.receiverId}) failed: ${(e as Error)?.message ?? e}.` +
+          (done.length
+            ? ` Already executed: ${done.join(', ')}. The wallet may now hold wNEAR or an intermediate token; check near_account and finish or reverse it with near_swap (for example WNEAR to NEAR).`
+            : ' Nothing was executed.'),
+      )
+    }
   }
   return hashes
+}
+
+async function accessKeyNonce(network: NearNetwork, accountId: string, publicKey: string): Promise<bigint | null> {
+  try {
+    const r: any = await rpc(NETWORKS[network], 'query', { request_type: 'view_access_key', finality: 'optimistic', account_id: accountId, public_key: publicKey })
+    return BigInt(r.nonce)
+  } catch {
+    return null
+  }
+}
+
+async function waitForNonceAbove(network: NearNetwork, accountId: string, publicKey: string, before: bigint | null) {
+  for (let i = 0; i < 20; i++) {
+    const n = await accessKeyNonce(network, accountId, publicKey)
+    if (n !== null && (before === null || n > before)) return
+    await new Promise((r) => setTimeout(r, 500))
+  }
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number, msg: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(msg)), ms)
+    p.then((v) => { clearTimeout(t); resolve(v) }, (e) => { clearTimeout(t); reject(e) })
+  })
 }
 
 // ---------------------------------------------------------------------------

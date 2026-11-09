@@ -25,6 +25,7 @@ import { TaskDetailsSection } from './TaskDetailsSection'
 import { SessionPreviewContent } from './SessionPreviewContent'
 import { TranscriptView } from './TranscriptView'
 import { TagPicker } from './TagPicker'
+import { ThreadHitl } from './ThreadHitl'
 
 export type PreviewMode = 'email' | 'feed' | 'custom' | 'transcript'
 
@@ -447,6 +448,9 @@ export const ThreadPreview = memo(function ThreadPreview({
                   />
                 </div>
               )}
+
+              {/* Pending approvals (NEAR actions, connector orders) */}
+              <ThreadHitl conversationId={thread.source.conversation?.id} agent={thread.agent} />
 
               {/* Artifacts */}
               {thread.artifacts.length > 0 && (

@@ -365,8 +365,11 @@ export const MarkdownRenderer = ({
 
       // Preprocess inline math: Convert $...$ to `$...$` so marked treats it as code
       // Use a more robust regex that handles special characters in LaTeX
+      // Pandoc rule so prices stay text: the opening $ is not followed by a
+      // space, the closing $ is not preceded by a space nor followed by a digit
+      // ("$1 per action, $25 daily" is not math).
       processedMarkdown = processedMarkdown.replace(
-        /\$([^$\n]+?)\$/g,
+        /\$(?!\s)([^$\n]+?)(?<!\s)\$(?!\d)/g,
         (_match, expr) => `\`$$${expr}$$\``,
       )
 

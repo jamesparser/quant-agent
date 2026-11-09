@@ -2,17 +2,29 @@
  * Read-only NEAR access: contract views, balances and USD prices.
  * @module lib/near/rpc
  */
-import { type NetworkConfig, PRICE_API } from './config'
+import { type NetworkConfig, PRICE_API, fetchRetry } from './config'
 
 let rpcId = 0
 
 export async function rpc<T = any>(cfg: NetworkConfig, method: string, params: unknown, signal?: AbortSignal): Promise<T> {
-  const res = await fetch(cfg.rpc, {
+  const init = {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ jsonrpc: '2.0', id: ++rpcId, method, params }),
     signal,
-  })
+  }
+  let res: Response | undefined
+  let lastErr: unknown
+  for (const url of [cfg.rpc, ...(cfg.rpcFallback ?? [])]) {
+    try {
+      res = await fetchRetry(url, init, 2)
+      if (res.ok) break
+    } catch (e) {
+      if ((e as Error)?.name === 'AbortError') throw e
+      lastErr = e
+    }
+  }
+  if (!res) throw lastErr instanceof Error ? lastErr : new Error('NEAR RPC unreachable')
   const body = await res.json()
   if (body.error) throw new Error(body.error?.cause?.name || body.error?.data || body.error?.message || 'RPC error')
   if (body.result?.error) throw new Error(String(body.result.error))
@@ -91,7 +103,7 @@ export async function storageMin(cfg: NetworkConfig, contract: string): Promise<
 
 /** All fungible tokens an account holds, via FastNEAR (one request). */
 export async function ftHoldings(cfg: NetworkConfig, accountId: string): Promise<{ contract_id: string; balance: string }[]> {
-  const res = await fetch(`${cfg.fastnear}/v1/account/${accountId}/ft`)
+  const res = await fetchRetry(`${cfg.fastnear}/v1/account/${accountId}/ft`)
   if (!res.ok) return []
   const body = await res.json()
   return (body.tokens ?? []).filter((t: { balance: string }) => t.balance && t.balance !== '0')
@@ -104,7 +116,7 @@ let priceCache: { at: number; data: Record<string, { price: string; symbol: stri
 
 export async function prices(): Promise<Record<string, { price: string; symbol: string; decimal: number }>> {
   if (priceCache && Date.now() - priceCache.at < 60_000) return priceCache.data
-  const res = await fetch(PRICE_API)
+  const res = await fetchRetry(PRICE_API)
   const data = await res.json()
   priceCache = { at: Date.now(), data }
   return data

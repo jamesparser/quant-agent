@@ -14,6 +14,16 @@ import { quoteSwap, swapMsg } from './rhea'
 import { findAsset, intentsQuote, submitDeposit, waitForIntents } from './intents'
 import { fc, transfer, type NearTx, type Plan } from './types'
 
+/** Whole-unit amount to raw units; "all" or "max" means the signer's full spendable balance. */
+export async function amountToRaw(cfg: NetworkConfig, signer: string, token: TokenInfo, amount: string, keepNative = 0n): Promise<bigint> {
+  if (/^\s*(all|max|everything)\s*$/i.test(amount)) {
+    const raw = token.id === NATIVE ? (await nearBalance(cfg, signer)).available - keepNative : await ftBalance(cfg, token.id, signer)
+    if (raw <= 0n) throw new Error(`${signer} has no spendable ${token.symbol}.`)
+    return raw
+  }
+  return toRaw(amount, token.decimals)
+}
+
 async function assertSpendable(cfg: NetworkConfig, signer: string, token: TokenInfo, raw: bigint) {
   if (token.id === NATIVE) {
     const b = await nearBalance(cfg, signer)
@@ -43,7 +53,8 @@ async function wrapTx(cfg: NetworkConfig, signer: string, raw: bigint): Promise<
 export async function planSwap(cfg: NetworkConfig, signer: string, from: string, to: string, amount: string, slippageBps = 50): Promise<Plan> {
   const tin = await resolveToken(cfg, from)
   const tout = await resolveToken(cfg, to)
-  const raw = toRaw(amount, tin.decimals)
+  // Selling all NEAR: keep enough for the swap transaction's up-front gas.
+  const raw = await amountToRaw(cfg, signer, tin, amount, 2n * 10n ** 23n)
   await assertSpendable(cfg, signer, tin, raw)
   const inId = tin.id === NATIVE ? cfg.wrap : tin.id
   const outId = tout.id === NATIVE ? cfg.wrap : tout.id
@@ -55,7 +66,7 @@ export async function planSwap(cfg: NetworkConfig, signer: string, from: string,
   if (tin.id === NATIVE) txs.push(await wrapTx(cfg, signer, raw))
   const reg = await registerIfNeeded(cfg, outId, signer)
   if (reg) txs.push(reg)
-  txs.push({ receiverId: inId, actions: [fc('ft_transfer_call', { receiver_id: cfg.ref, amount: raw.toString(), msg: swapMsg(q.actions) }, 300, ONE_YOCTO)] })
+  txs.push({ receiverId: inId, actions: [fc('ft_transfer_call', { receiver_id: cfg.ref, amount: raw.toString(), msg: swapMsg(q.actions) }, 180, ONE_YOCTO)] })
   if (tout.id === NATIVE) txs.push({ receiverId: cfg.wrap, actions: [fc('near_withdraw', { amount: q.minAmountOut.toString() }, 10, ONE_YOCTO)] })
 
   return {
@@ -111,7 +122,7 @@ export async function planStake(cfg: NetworkConfig, signer: string, provider: 'm
 // ---------------------------------------------------------------------------
 export async function planSupply(cfg: NetworkConfig, signer: string, tokenIn: string, amount: string): Promise<Plan> {
   const t = await resolveToken(cfg, tokenIn)
-  const raw = toRaw(amount, t.decimals)
+  const raw = await amountToRaw(cfg, signer, t, amount)
   await assertSpendable(cfg, signer, t, raw)
   const id = t.id === NATIVE ? cfg.wrap : t.id
   const txs: NearTx[] = []
@@ -147,7 +158,7 @@ export async function planWithdrawSupply(cfg: NetworkConfig, signer: string, tok
 // ---------------------------------------------------------------------------
 export async function planTransfer(cfg: NetworkConfig, signer: string, tokenIn: string, amount: string, receiver: string): Promise<Plan> {
   const t = await resolveToken(cfg, tokenIn)
-  const raw = toRaw(amount, t.decimals)
+  const raw = await amountToRaw(cfg, signer, t, amount)
   const to = receiver.trim().toLowerCase()
   const implicit = /^[0-9a-f]{64}$/.test(to)
   if (!implicit && !(await accountExists(cfg, to))) throw new Error(`Account ${to} does not exist on ${cfg.network}.`)
@@ -172,7 +183,7 @@ export async function planTransfer(cfg: NetworkConfig, signer: string, tokenIn: 
 // ---------------------------------------------------------------------------
 export async function quoteCrossChain(cfg: NetworkConfig, signer: string, from: string, amount: string, toSymbol: string, toChain: string, recipient?: string) {
   const tin = await resolveToken(cfg, from)
-  const raw = toRaw(amount, tin.decimals)
+  const raw = await amountToRaw(cfg, signer, tin, amount)
   const inId = tin.id === NATIVE ? cfg.wrap : tin.id
   const dest = await findAsset(cfg, toSymbol, toChain)
   // Placeholder recipient for dry quotes only (1Click rejects burn addresses); a real move always needs the user's recipient.
@@ -186,7 +197,7 @@ export async function quoteCrossChain(cfg: NetworkConfig, signer: string, from: 
 export async function planCrossChain(cfg: NetworkConfig, signer: string, from: string, amount: string, toSymbol: string, toChain: string, recipient: string): Promise<Plan> {
   if (!recipient) throw new Error('recipient is required (an account or address on the destination chain)')
   const tin = await resolveToken(cfg, from)
-  const raw = toRaw(amount, tin.decimals)
+  const raw = await amountToRaw(cfg, signer, tin, amount)
   await assertSpendable(cfg, signer, tin, raw)
   const inId = tin.id === NATIVE ? cfg.wrap : tin.id
   const dest = await findAsset(cfg, toSymbol, toChain)

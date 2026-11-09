@@ -13,6 +13,8 @@ export type NearNetwork = 'mainnet' | 'testnet'
 export interface NetworkConfig {
   network: NearNetwork
   rpc: string
+  /** Backup RPC endpoints, tried when the main one fails */
+  rpcFallback: string[]
   fastnear: string
   explorer: string
   wrap: string
@@ -32,6 +34,7 @@ export const NETWORKS: Record<NearNetwork, NetworkConfig> = {
   mainnet: {
     network: 'mainnet',
     rpc: 'https://rpc.mainnet.fastnear.com',
+    rpcFallback: ['https://free.rpc.fastnear.com', 'https://near.lava.build'],
     fastnear: 'https://api.fastnear.com',
     explorer: 'https://nearblocks.io',
     wrap: 'wrap.near',
@@ -45,6 +48,7 @@ export const NETWORKS: Record<NearNetwork, NetworkConfig> = {
   testnet: {
     network: 'testnet',
     rpc: 'https://test.rpc.fastnear.com',
+    rpcFallback: ['https://rpc.testnet.near.org'],
     fastnear: 'https://test.api.fastnear.com',
     explorer: 'https://testnet.nearblocks.io',
     wrap: 'wrap.testnet',
@@ -67,3 +71,27 @@ export const NATIVE = 'near'
 
 export const txUrl = (cfg: NetworkConfig, hash: string) => `${cfg.explorer}/txns/${hash}`
 export const accountUrl = (cfg: NetworkConfig, id: string) => `${cfg.explorer}/address/${id}`
+
+/**
+ * fetch with retries for flaky networks ("Failed to fetch"): up to 3 tries with
+ * a short backoff on network errors and 5xx/429 responses. Not used to send
+ * signed transactions (near-api-js handles those with its failover provider).
+ */
+export async function fetchRetry(input: string, init?: RequestInit, tries = 3): Promise<Response> {
+  let last: unknown
+  for (let i = 0; i < tries; i++) {
+    try {
+      const res = await fetch(input, init)
+      if ((res.status >= 500 || res.status === 429) && i < tries - 1) {
+        last = new Error(`HTTP ${res.status}`)
+      } else {
+        return res
+      }
+    } catch (e) {
+      if ((e as Error)?.name === 'AbortError') throw e
+      last = e
+    }
+    await new Promise((r) => setTimeout(r, 500 * (i + 1)))
+  }
+  throw new Error(`Network request failed after ${tries} tries (${(last as Error)?.message ?? last}): ${input.split('?')[0]}`)
+}

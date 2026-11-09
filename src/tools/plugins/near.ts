@@ -96,7 +96,7 @@ export const nearSwapQuotePlugin: ToolPlugin<SwapArgs, R> = createToolPlugin({
     type: 'function',
     function: {
       name: 'near_swap_quote',
-      description: 'Quote a token swap on Rhea (Ref Finance), the main NEAR DEX, without trading. Tokens: NEAR, WNEAR, USDC, USDT, STNEAR, LINEAR, REF (mainnet); NEAR, USDT, USDC, STNEAR, LINEAR, HACK (testnet); or any token contract id.',
+      description: 'Quote a token swap on Rhea (Ref Finance), the main NEAR DEX, without trading. Use only when the user asks for a quote or price; to trade, call near_swap. Tokens: NEAR, WNEAR, USDC, USDT, STNEAR, LINEAR, REF (mainnet); NEAR, USDT, USDC, STNEAR, LINEAR, HACK (testnet); or any token contract id.',
       parameters: {
         type: 'object',
         properties: {
@@ -135,12 +135,12 @@ export const nearSwapPlugin: ToolPlugin<SwapArgs, R> = createToolPlugin({
     type: 'function',
     function: {
       name: 'near_swap',
-      description: 'Swap tokens on Rhea (Ref Finance) on NEAR. Also the way to exit liquid staking instantly (swap STNEAR or LINEAR to NEAR). Before calling, state the trade in one line (sell, buy, amount). The user approves it unless YOLO mode is on and it is inside their spending limits.',
+      description: 'Swap tokens on Rhea (Ref Finance) on NEAR. Also the way to exit liquid staking instantly (swap STNEAR or LINEAR to NEAR). Call it directly, with no separate quote or confirmation question needed: it quotes, then shows the user an approval card itself, or runs on its own in YOLO mode inside the spending limits. Report only what it returns (amounts, explorer links).',
       parameters: {
         type: 'object',
         properties: {
           from: { type: 'string' }, to: { type: 'string' },
-          amount: { type: 'string', description: 'Amount of `from` in whole units' },
+          amount: { type: 'string', description: 'Amount of `from` in whole units, or "all" for the full spendable balance' },
           slippagePct: { type: 'number', description: 'Max slippage in percent. Default 0.5' },
         },
         required: ['from', 'to', 'amount'],
@@ -224,7 +224,7 @@ export const nearTransferPlugin: ToolPlugin<{ token: string; amount: string; to:
     type: 'function',
     function: {
       name: 'near_transfer',
-      description: 'Send NEAR or a NEAR token (NEP-141) to a NEAR account, for example to move funds from the agent wallet back to the user. Off by default in the spending settings.',
+      description: 'Send NEAR or a NEAR token (NEP-141) to a NEAR account, for example to move funds from the agent wallet back to the user. Off by default in the spending settings. amount can be "all" (for NEAR: everything except storage and a 0.05 NEAR gas reserve). Call it directly; it shows its own approval card.',
       parameters: {
         type: 'object',
         properties: { token: { type: 'string' }, amount: { type: 'string' }, to: { type: 'string', description: 'Receiver NEAR account id' } },

@@ -89,6 +89,15 @@ import { getMcpToolDefinitions, registerMcpTools } from '@/features/connectors/l
 import { realCryptoCapPlugins } from '@/tools/plugins/realcryptocap'
 import { nearPlugins } from '@/tools/plugins/near'
 import {
+  NEAR_ACTION_TOOL_RE,
+  NEAR_DONE_RE,
+  NEAR_INTENT_RE,
+  NEAR_NUDGE,
+  NEAR_PROMISE_RE,
+  NEAR_RULES,
+  stripUnverifiedTxLinks,
+} from '@/lib/near/guard'
+import {
   WIKIPEDIA_SEARCH_TOOL_DEFINITION,
   WIKIPEDIA_ARTICLE_TOOL_DEFINITION,
 } from '@/tools/plugins/wikipedia'
@@ -154,6 +163,7 @@ export function buildOrchestrationPrompt(
 
 /** Maximum iterations for tool calling loop to prevent infinite loops */
 const MAX_TOOL_ITERATIONS = 10
+
 
 /** Map tool names to i18n keys for status messages */
 const TOOL_STATUS_I18N_KEYS: Record<string, string> = {
@@ -832,6 +842,7 @@ ${connectorBlocks}`
       pinnedContext,
       // Add citation instructions if not already included via buildAgentInstructions
       !hasKnowledgeItems ? CITATION_INSTRUCTIONS : '',
+      NEAR_RULES,
       `ALWAYS respond in ${languages[lang]} as this is the user's language.`,
     ]
 
@@ -942,7 +953,7 @@ ${connectorBlocks}`
     const llmConfig = {
       ...config,
       ...(hasTools
-        ? { tools: allToolDefinitions, tool_choice: 'auto' as const }
+        ? { tools: allToolDefinitions, tool_choice: 'auto' as 'auto' | 'required' }
         : {}),
       ...(enableWebSearchGrounding ? { enableWebSearch: true } : {}),
       ...(signal ? { signal } : {}),
@@ -953,6 +964,12 @@ ${connectorBlocks}`
     let finalContent = ''
     let toolIterations = 0
     let chatStepCounter = 0
+    let nearActionCalled = false
+    let nearNudges = 0
+    let nearToolOutput = ''
+    // Set after a nudge: the next model turn must make a tool call.
+    let forceToolCall = false
+    const nearIntent = NEAR_INTENT_RE.test(prompt)
     const messageSteps: MessageStep[] = []
     const workingMessages = [...messages]
 
@@ -995,7 +1012,9 @@ ${connectorBlocks}`
 
       for await (const chunk of LLMService.streamChat(
         workingMessages,
-        llmConfig,
+        forceToolCall && llmConfig.tools
+          ? { ...llmConfig, tool_choice: 'required' as const }
+          : llmConfig,
         {
           agentId: agent.id,
           conversationId: conversation.id,
@@ -1033,11 +1052,29 @@ ${connectorBlocks}`
         onResponseUpdate({ type: 'content', content: finalContent })
       }
 
-      // If no tool calls, we're done
+      // If no tool calls, we're done. Exception: the model announced a NEAR
+      // action (or wrote a fake "(Calling near_swap…)" line) but returned no
+      // real tool call. Nudge it (max 2) so a promised trade never silently
+      // disappears.
       if (toolCalls.length === 0) {
+        const promised =
+          NEAR_PROMISE_RE.test(finalContent) || (nearIntent && NEAR_DONE_RE.test(finalContent))
+        if (promised && !nearActionCalled && nearNudges < 2) {
+          nearNudges++
+          forceToolCall = true
+          console.warn('⚠️ NEAR action announced without a tool call, nudging')
+          workingMessages.push({ role: 'assistant', content: finalContent || '(no text)' })
+          workingMessages.push({
+            role: 'user',
+            content: NEAR_NUDGE,
+          })
+          continue
+        }
         console.log('✓ No tool calls, conversation complete')
         break
       }
+      if (toolCalls.some((tc) => NEAR_ACTION_TOOL_RE.test(tc.function.name))) nearActionCalled = true
+      forceToolCall = false
 
       console.log(
         `🔧 Executing ${toolCalls.length} tool call(s):`,
@@ -1098,6 +1135,7 @@ ${connectorBlocks}`
       })
 
       console.log('🔧 Tool results:', toolResults)
+      nearToolOutput += toolResults.map((r) => String(r.result ?? '')).join('\n')
 
       // Build per-tool-call I/O data for step tracking
       const stepToolCalls: ToolCallResult[] = toolCalls.map((tc, idx) => {
@@ -1174,6 +1212,29 @@ ${connectorBlocks}`
 
     if (toolIterations >= MAX_TOOL_ITERATIONS) {
       console.warn('⚠️ Max tool iterations reached')
+    }
+
+    // Integrity check: never show a NEAR transaction link the tools did not
+    // produce, and flag a claimed NEAR result when no action tool ran.
+    {
+      let flagged = false
+      const stripped = stripUnverifiedTxLinks(finalContent, nearToolOutput)
+      finalContent = stripped.content
+      flagged = stripped.removed > 0
+      if (!nearActionCalled && nearIntent && NEAR_DONE_RE.test(finalContent)) flagged = true
+      // The reply ends by announcing another step that never ran.
+      const announcedOnly = !flagged && NEAR_PROMISE_RE.test(finalContent.slice(-300).replace(/runs on its own/gi, ''))
+      if (announcedOnly) {
+        finalContent +=
+          '\n\n> ⚠️ Quant Agent check: the step announced above did not run, so nothing else changed on-chain. Ask for it to run it.'
+        onResponseUpdate({ type: 'content', content: finalContent })
+      }
+      if (flagged) {
+        finalContent += nearActionCalled
+          ? '\n\n> ⚠️ Quant Agent check: a transaction link above did not come from the NEAR tools and was removed. Trust only the verified links from the tool result.'
+          : '\n\n> ⚠️ Quant Agent check: no NEAR transaction was executed in this reply, so nothing changed on-chain. Ask again to run it; a real action shows an approval card or a verified explorer link.'
+        onResponseUpdate({ type: 'content', content: finalContent })
+      }
     }
 
     // Finalize any remaining running steps

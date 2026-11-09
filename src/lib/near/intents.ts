@@ -3,7 +3,7 @@
  * Docs: https://docs.near-intents.org/integration/distribution-channels/1click-api
  * @module lib/near/intents
  */
-import type { NetworkConfig } from './config'
+import { type NetworkConfig, fetchRetry } from './config'
 
 export interface IntentsToken {
   assetId: string
@@ -34,7 +34,7 @@ let tokenCache: { at: number; list: IntentsToken[] } | null = null
 export async function intentsTokens(cfg: NetworkConfig): Promise<IntentsToken[]> {
   const base = need1Click(cfg)
   if (tokenCache && Date.now() - tokenCache.at < 300_000) return tokenCache.list
-  const res = await fetch(`${base}/v0/tokens`)
+  const res = await fetchRetry(`${base}/v0/tokens`)
   if (!res.ok) throw new Error(`1Click tokens failed (${res.status})`)
   const list = (await res.json()) as IntentsToken[]
   tokenCache = { at: Date.now(), list }
@@ -82,7 +82,7 @@ export async function intentsQuote(cfg: NetworkConfig, p: {
     deadline: new Date(Date.now() + 30 * 60_000).toISOString(),
     referral: 'realcryptocap-quant-agent',
   }
-  const res = await fetch(`${base}/v0/quote`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+  const res = await fetchRetry(`${base}/v0/quote`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
   const out = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(`NEAR Intents quote failed: ${out?.message || out?.error || res.status}`)
   return out.quote as IntentsQuote
@@ -97,7 +97,7 @@ export async function submitDeposit(cfg: NetworkConfig, depositAddress: string, 
 
 export async function intentsStatus(cfg: NetworkConfig, depositAddress: string): Promise<{ status: string; [k: string]: unknown }> {
   const base = need1Click(cfg)
-  const res = await fetch(`${base}/v0/status?depositAddress=${encodeURIComponent(depositAddress)}`)
+  const res = await fetchRetry(`${base}/v0/status?depositAddress=${encodeURIComponent(depositAddress)}`)
   return res.json()
 }
 

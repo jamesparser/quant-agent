@@ -326,7 +326,7 @@ async function buildSystemPrompt(
   )
 
   parts.push(
-    `\n\n## Execution Instructions\nYou are an autonomous agent executing a task. You have access to tools — use them proactively.\n\n**Trading tools:** For anything about crypto markets, trades or bots, call market_data first and cite its numbers. Use decision_receipt once per coin for a concrete trade decision, strategy_library for strategy and bot ideas, and my_trading_bot when the user's own bot is involved. To act on NEAR (swap on Rhea, liquid-stake, supply to Rhea Lending, send, or move cross-chain through NEAR Intents), call near_account first, quote before any trade, then use the near_* action tools; they handle approval and spending limits. Use wikipedia, wikidata and arxiv tools for background facts and papers.\n\n**Other tools:** Use knowledge tools to search the user's knowledge base, math tools for calculations, and code tools when code execution is needed.\n\nWhen you have fully addressed all requirements, provide your final deliverable. Be thorough and ensure all requirements are addressed.`,
+    `\n\n## Execution Instructions\nYou are an autonomous agent executing a task. You have access to tools — use them proactively.\n\n**Trading tools:** For anything about crypto markets, trades or bots, call market_data first and cite its numbers. Use decision_receipt once per coin for a concrete trade decision, strategy_library for strategy and bot ideas, and my_trading_bot when the user's own bot is involved. To act on NEAR (swap on Rhea, liquid-stake, supply to Rhea Lending, send, or move cross-chain through NEAR Intents), call near_account first, quote before any trade, then use the near_* action tools; they handle approval and spending limits. The action tools quote on their own, so a separate quote is optional. Never write that an action is approved, executing or done unless the near_* action tool returned success in this conversation; to act, call the tool directly without announcing it first. Use wikipedia, wikidata and arxiv tools for background facts and papers.\n\n**Other tools:** Use knowledge tools to search the user's knowledge base, math tools for calculations, and code tools when code execution is needed.\n\nWhen you have fully addressed all requirements, provide your final deliverable. Be thorough and ensure all requirements are addressed.`,
   )
 
   return parts.join('\n')
@@ -487,6 +487,7 @@ export async function runAgent(
   const allToolCalls: AgentRunnerResult['toolCallsLog'] = []
   let finalResponse = ''
   let turnsUsed = 0
+  let actionNudges = 0
 
   for (let turn = 0; turn < maxTurns; turn++) {
     // Check for cancellation
@@ -527,8 +528,28 @@ export async function runAgent(
       })
     }
 
-    // If no tool calls, agent is done
+    // If no tool calls, agent is done. Exception: the model announced an
+    // on-chain action ("executing now") but ended the turn without calling
+    // the action tool. Nudge it to make the call instead of stopping, so a
+    // promised trade never silently disappears.
     if (turnResult.isComplete) {
+      const promised =
+        /\b(approving and executing|executing (it |this |the \w+ )?now|submitting (it |the \w+ )?now|sending (it )?now|placing (it|the order) now)\b/i.test(
+          turnResult.content ?? '',
+        )
+      const actionCalled = allToolCalls.some((c) =>
+        /^near_(swap|stake|lend|transfer|crosschain)$/.test(c.tool),
+      )
+      if (promised && !actionCalled && actionNudges < 2 && tools.some((t) => t.function.name.startsWith('near_'))) {
+        actionNudges++
+        messages.push({ role: 'assistant', content: turnResult.content || '(no text)' })
+        messages.push({
+          role: 'user',
+          content:
+            'You said you are executing, but you did not call the action tool, so nothing happened on-chain. Call the matching near_* action tool now (near_swap, near_stake, near_lend, near_transfer or near_crosschain) with the parameters you just stated. Do not reply with text first.',
+        })
+        continue
+      }
       break
     }
 

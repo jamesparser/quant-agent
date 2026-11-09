@@ -10,6 +10,7 @@
  *
  * @module lib/near/execute
  */
+import { nearBalance } from './rpc'
 import { requestHumanInput } from '@/lib/hitl'
 import { getEffectiveSettings } from '@/stores/userStore'
 import { NETWORKS, txUrl } from './config'
@@ -26,6 +27,7 @@ export async function runPlan(plan: Plan, ctx: RunContext) {
   const usd = await planUsd(plan).catch(() => null)
   const verdict = checkPolicy(plan, usd, s.limits, s.ledger)
   if (!verdict.ok && verdict.blocked) throw new Error(verdict.reason)
+  await assertGasAffordable(plan)
 
   const yolo = getEffectiveSettings().yoloMode ?? false
   const silent = yolo && verdict.ok && mode === 'agent'
@@ -70,5 +72,37 @@ export async function runPlan(plan: Plan, ctx: RunContext) {
     valueUsd: usd === null ? null : Number(usd.toFixed(2)),
     transactions: hashes.filter(Boolean).map((h) => txUrl(cfg, h)),
     ...follow,
+  }
+}
+
+/**
+ * NEAR charges prepaid gas up front at a pessimistic price (about 0.001 NEAR
+ * per Tgas, most of it refunded), so an account needs that much free NEAR when
+ * each transaction is sent, on top of attached deposits. Check the whole plan
+ * before asking for approval, so a trade never stops halfway.
+ */
+async function assertGasAffordable(plan: Plan) {
+  const cfg = NETWORKS[plan.network]
+  const b = await nearBalance(cfg, plan.signer)
+  let free = b.amount - b.storage
+  const PER_TGAS = 10n ** 21n // 0.001 NEAR
+  for (let i = 0; i < plan.txs.length; i++) {
+    const tx = plan.txs[i]
+    let deposit = 0n
+    let tgas = 0n
+    for (const a of tx.actions) {
+      deposit += BigInt(a.params.deposit ?? 0)
+      if (a.type === 'FunctionCall') tgas += BigInt(a.params.gas) / 10n ** 12n
+    }
+    const need = deposit + tgas * PER_TGAS + 10n ** 21n
+    if (free < need) {
+      const fmt = (y: bigint) => (Number(y) / 1e24).toFixed(4)
+      throw new Error(
+        `Not enough NEAR for gas: transaction ${i + 1} of ${plan.txs.length} needs about ${fmt(need)} NEAR free when it is sent ` +
+          `(NEAR reserves gas up front and refunds most of it), but ${plan.signer} would have ${fmt(free < 0n ? 0n : free)} NEAR. ` +
+          'Nothing was executed. Add NEAR to this wallet, unwrap wNEAR (near_swap WNEAR to NEAR), or use a smaller amount.',
+      )
+    }
+    free -= deposit + 2n * 10n ** 21n // deposits leave; assume about 0.002 NEAR of gas is burnt
   }
 }

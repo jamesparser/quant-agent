@@ -7,7 +7,7 @@
  *
  * @module lib/near/rhea
  */
-import type { NetworkConfig } from './config'
+import { type NetworkConfig, fetchRetry } from './config'
 import { view } from './rpc'
 
 export interface RefSwapAction {
@@ -36,14 +36,19 @@ export async function quoteSwap(
   signal?: AbortSignal,
 ): Promise<SwapQuote> {
   if (amountIn <= 0n) throw new Error('Amount must be above zero')
-  return cfg.smartRouter
-    ? smartRouterQuote(cfg, tokenIn, tokenOut, amountIn, slippageBps, signal)
-    : onChainQuote(cfg, tokenIn, tokenOut, amountIn, slippageBps, signal)
+  if (!cfg.smartRouter) return onChainQuote(cfg, tokenIn, tokenOut, amountIn, slippageBps, signal)
+  try {
+    return await smartRouterQuote(cfg, tokenIn, tokenOut, amountIn, slippageBps, signal)
+  } catch (e) {
+    if ((e as Error)?.name === 'AbortError') throw e
+    // Smart router down or no route: quote the simple pools on-chain instead.
+    return onChainQuote(cfg, tokenIn, tokenOut, amountIn, slippageBps, signal)
+  }
 }
 
 async function smartRouterQuote(cfg: NetworkConfig, tokenIn: string, tokenOut: string, amountIn: bigint, bps: number, signal?: AbortSignal): Promise<SwapQuote> {
   const url = `${cfg.smartRouter}/findPath?amountIn=${amountIn}&tokenIn=${tokenIn}&tokenOut=${tokenOut}&pathDeep=3&slippage=${bps / 10_000}`
-  const res = await fetch(url, { signal })
+  const res = await fetchRetry(url, { signal })
   const body = await res.json()
   const data = body?.result_data
   if (body?.result_code !== 0 || !data?.routes?.length) throw new Error(`No Rhea route for this pair (${body?.result_message || 'empty'})`)
