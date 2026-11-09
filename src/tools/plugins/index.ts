@@ -159,6 +159,7 @@ import { wikipediaSearchPlugin, wikipediaArticlePlugin } from './wikipedia'
 import { webSearchPlugin } from './web-search'
 import { culturalInsightsPlugin } from './cultural-insights'
 import { realCryptoCapPlugins } from './realcryptocap'
+import { nearPlugins } from './near'
 import {
   wikidataSearchPlugin,
   wikidataEntityPlugin,
@@ -201,6 +202,8 @@ export const corePlugins: ToolPlugin<any, any>[] = [
   getDocumentSummaryPlugin,
   // RealCryptoCap: market data, decision receipts, strategy library, user's bot
   ...realCryptoCapPlugins,
+  // NEAR: Rhea swaps, liquid staking, lending, NEAR Intents
+  ...nearPlugins,
   // Research
   wikipediaSearchPlugin,
   wikipediaArticlePlugin,
@@ -252,6 +255,7 @@ export const pluginsByCategory = {
   ],
   research: [
     ...realCryptoCapPlugins,
+    ...nearPlugins,
     wikipediaSearchPlugin,
     wikipediaArticlePlugin,
     wikidataSearchPlugin,

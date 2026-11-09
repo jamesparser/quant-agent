@@ -103,8 +103,8 @@ export function requestHumanInput(
     createdAt: new Date().toISOString(),
   }
 
-  // YOLO mode → auto-resolve immediately
-  if (isYoloMode) {
+  // YOLO mode → auto-resolve immediately (unless the caller must always ask)
+  if (isYoloMode && !options.alwaysAsk) {
     const autoValue = getAutoResponse(options)
     request.status = 'auto-resolved'
     request.response = autoValue

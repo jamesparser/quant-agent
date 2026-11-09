@@ -1131,6 +1131,8 @@ export interface HitlRequestOptions {
   type: HitlRequestType
   question: string
   quickReplies?: HitlQuickReply[]
+  /** Ask even in YOLO mode (e.g. a NEAR action over the user's spending limit). */
+  alwaysAsk?: boolean
 }
 
 /** Result returned when a HITL request is resolved */

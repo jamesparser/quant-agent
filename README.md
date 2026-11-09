@@ -13,6 +13,18 @@ It is not a chat window. It can also trade for you through your own connected br
 
 Built for the [emma Hackathon](https://hackathon.emma.ms/) (Builders track).
 
+## NEAR HACKATHON: trade on NEAR by talking to the agent
+
+Tell Quant Agent what to do and it does it on NEAR: swap on Rhea, liquid-stake
+with Meta Pool or LiNEAR, supply to Rhea Lending, send tokens, and move assets
+cross-chain through NEAR Intents. You approve each action, or switch on YOLO
+mode and the agent wallet acts on its own inside your USD spending limits.
+Works with NEAR Mobile, HOT, Meteor, Ledger, MetaMask and other NEAR wallets.
+
+Judge guide, contracts, architecture and disclosure: [`docs/NEAR.md`](./docs/NEAR.md).
+NEAR work only: [`pre-near-hackathon...main`](https://github.com/jamesparser/quant-agent/compare/pre-near-hackathon...main).
+Same team's other NEAR HACKATHON project: [$HACK](https://github.com/jamesparser/hack-near).
+
 ## What it does
 
 - **Jobs.** Goal in, structured research out. Each job keeps its trace, sources and tool calls.

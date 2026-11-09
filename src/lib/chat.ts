@@ -87,6 +87,7 @@ import { PPTX_TOOL_DEFINITIONS } from '@/lib/pptx-tools/types'
 // out of the boot graph (REPORT §4 Phase 1).
 import { getMcpToolDefinitions, registerMcpTools } from '@/features/connectors/lib/mcp-tools'
 import { realCryptoCapPlugins } from '@/tools/plugins/realcryptocap'
+import { nearPlugins } from '@/tools/plugins/near'
 import {
   WIKIPEDIA_SEARCH_TOOL_DEFINITION,
   WIKIPEDIA_ARTICLE_TOOL_DEFINITION,
@@ -245,6 +246,7 @@ function getAgentToolDefinitions(_agent: Agent): ToolDefinition[] {
     // Research tools
     // RealCryptoCap trading tools (market data, decision receipts, strategies, user bot)
     ...realCryptoCapPlugins.map((p) => p.definition),
+    ...nearPlugins.map((p) => p.definition),
     WIKIPEDIA_SEARCH_TOOL_DEFINITION,
     WIKIPEDIA_ARTICLE_TOOL_DEFINITION,
     WIKIDATA_SEARCH_TOOL_DEFINITION,

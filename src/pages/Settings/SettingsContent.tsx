@@ -45,6 +45,7 @@ import {
   VoiceSection,
   SubscriptionSection,
   ScheduledTasksSection,
+  NearSection,
 } from './components'
 import { FilesSection } from '@/pages/Knowledge/components'
 import { IconName } from '@/lib/types'
@@ -70,6 +71,7 @@ type SectionKey =
   | 'sync'
   | 'subscription'
   | 'scheduled-tasks'
+  | 'near'
 
 type SectionGroup =
   | 'configure'
@@ -149,6 +151,7 @@ const SettingsContentInner = () => {
     'sync',
     'subscription',
     'scheduled-tasks',
+    'near',
   ]
 
   // Use the hash highlight hook for element-level deep linking
@@ -224,6 +227,7 @@ const SettingsContentInner = () => {
       icon: 'Label',
       group: 'personalize',
     },
+    { key: 'near', label: 'NEAR', icon: 'Coins', group: 'extend' },
     { key: 'skills', label: t('Skills'), icon: 'Puzzle', group: 'extend' },
     {
       key: 'connectors',
@@ -350,6 +354,8 @@ const SettingsContentInner = () => {
         return <SubscriptionSection />
       case 'scheduled-tasks':
         return <ScheduledTasksSection />
+      case 'near':
+        return <NearSection />
       case 'local-backup':
         return <LocalBackupSection />
       case 'sync':

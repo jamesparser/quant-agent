@@ -55,6 +55,7 @@ import { userSettings } from '@/stores/userStore'
 import { languages } from '@/i18n'
 import { getMcpToolDefinitions, registerMcpTools } from '@/features/connectors/lib/mcp-tools'
 import { realCryptoCapPlugins } from '@/tools/plugins/realcryptocap'
+import { nearPlugins } from '@/tools/plugins/near'
 import {
   WIKIPEDIA_SEARCH_TOOL_DEFINITION,
   WIKIPEDIA_ARTICLE_TOOL_DEFINITION,
@@ -189,6 +190,8 @@ async function collectTools(scope?: AgentScope): Promise<ToolDefinition[]> {
     ...Object.values(PPTX_TOOL_DEFINITIONS),
     // RealCryptoCap trading tools (market data, decision receipts, strategies, user bot)
     ...realCryptoCapPlugins.map((p) => p.definition),
+    // NEAR on-chain actions (Rhea, staking, lending, NEAR Intents)
+    ...nearPlugins.map((p) => p.definition),
     WIKIPEDIA_SEARCH_TOOL_DEFINITION,
     WIKIPEDIA_ARTICLE_TOOL_DEFINITION,
     WIKIDATA_SEARCH_TOOL_DEFINITION,
@@ -323,7 +326,7 @@ async function buildSystemPrompt(
   )
 
   parts.push(
-    `\n\n## Execution Instructions\nYou are an autonomous agent executing a task. You have access to tools — use them proactively.\n\n**Trading tools:** For anything about crypto markets, trades or bots, call market_data first and cite its numbers. Use decision_receipt once per coin for a concrete trade decision, strategy_library for strategy and bot ideas, and my_trading_bot when the user's own bot is involved. Use wikipedia, wikidata and arxiv tools for background facts and papers.\n\n**Other tools:** Use knowledge tools to search the user's knowledge base, math tools for calculations, and code tools when code execution is needed.\n\nWhen you have fully addressed all requirements, provide your final deliverable. Be thorough and ensure all requirements are addressed.`,
+    `\n\n## Execution Instructions\nYou are an autonomous agent executing a task. You have access to tools — use them proactively.\n\n**Trading tools:** For anything about crypto markets, trades or bots, call market_data first and cite its numbers. Use decision_receipt once per coin for a concrete trade decision, strategy_library for strategy and bot ideas, and my_trading_bot when the user's own bot is involved. To act on NEAR (swap on Rhea, liquid-stake, supply to Rhea Lending, send, or move cross-chain through NEAR Intents), call near_account first, quote before any trade, then use the near_* action tools; they handle approval and spending limits. Use wikipedia, wikidata and arxiv tools for background facts and papers.\n\n**Other tools:** Use knowledge tools to search the user's knowledge base, math tools for calculations, and code tools when code execution is needed.\n\nWhen you have fully addressed all requirements, provide your final deliverable. Be thorough and ensure all requirements are addressed.`,
   )
 
   return parts.join('\n')
